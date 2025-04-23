@@ -1,0 +1,34 @@
+{"timestamp": "2025-04-15 15:51:40,881", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 112.125, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 15:51:40,933", "function": "create_vxlan_by_host_id", "duration_ms": 13.128, "kwargs": "{'vxlan_id': 1, 'remote': '10.42.0.11'}"}
+{"timestamp": "2025-04-15 15:51:51,205", "function": "send_swarmNode_config", "duration_ms": 10021.132, "args": "('{\"TYPE\": \"UPDAET_CONFIG\", \"VETH1_VIP\": \"10.1.0.1\", \"VETH1_VMAC\": \"00:00:0a:01:00:01\", \"VXLAN_ID\": 1, \"SWARM_ID\": 1, \"COORDINATOR_VIP\": \"10.1.255.254\", \"COORDINATOR_TCP_PORT\": 29997, \"AP_UUID\": \"AP:00:00:01\"}', ('10.42.0.11', 29997))"}
+{"timestamp": "2025-04-15 15:51:51,206", "function": "handle_new_connected_station", "duration_ms": 10437.356, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
+{"timestamp": "2025-04-15 15:51:51,216", "function": "handle_disconnected_station", "duration_ms": 6.78, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
+{"timestamp": "2025-04-15 15:51:51,222", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 4.748, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 15:51:51,279", "function": "create_vxlan_by_host_id", "duration_ms": 15.715, "kwargs": "{'vxlan_id': 1, 'remote': '10.42.0.11'}"}
+{"timestamp": "2025-04-15 15:51:51,758", "function": "send_swarmNode_config", "duration_ms": 204.327, "args": "('{\"TYPE\": \"UPDAET_CONFIG\", \"VETH1_VIP\": \"10.1.0.1\", \"VETH1_VMAC\": \"00:00:0a:01:00:01\", \"VXLAN_ID\": 1, \"SWARM_ID\": 1, \"COORDINATOR_VIP\": \"10.1.255.254\", \"COORDINATOR_TCP_PORT\": 29997, \"AP_UUID\": \"AP:00:00:01\"}', ('10.42.0.11', 29997))"}
+{"timestamp": "2025-04-15 15:52:01,777", "function": "handle_new_connected_station", "duration_ms": 10559.392, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
+{"timestamp": "2025-04-15 15:57:03,018", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 94.454, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 15:57:03,070", "function": "create_vxlan_by_host_id", "duration_ms": 13.194, "kwargs": "{'vxlan_id': 1, 'remote': '10.42.0.11'}"}
+{"timestamp": "2025-04-15 15:58:02,059", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 170.73, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 15:58:02,111", "function": "create_vxlan_by_host_id", "duration_ms": 13.594, "kwargs": "{'vxlan_id': 1, 'remote': '10.42.0.11'}"}
+{"timestamp": "2025-04-15 15:58:02,615", "function": "send_swarmNode_config", "duration_ms": 244.214, "args": "('{\"TYPE\": \"UPDAET_CONFIG\", \"VETH1_VIP\": \"10.1.0.1\", \"VETH1_VMAC\": \"00:00:0a:01:00:01\", \"VXLAN_ID\": 1, \"SWARM_ID\": 1, \"COORDINATOR_VIP\": \"10.1.255.254\", \"COORDINATOR_TCP_PORT\": 29997, \"AP_UUID\": \"AP:00:00:01\"}', ('10.42.0.11', 29997))"}
+{"timestamp": "2025-04-15 15:58:12,741", "function": "handle_new_connected_station", "duration_ms": 10853.005, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
+{"timestamp": "2025-04-15 16:04:56,691", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 2547.786, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 16:04:56,742", "function": "create_vxlan_by_host_id", "duration_ms": 14.966, "kwargs": "{'vxlan_id': 1, 'remote': '10.42.0.11'}"}
+{"timestamp": "2025-04-15 16:04:57,221", "function": "send_swarmNode_config", "duration_ms": 190.385, "args": "('{\"TYPE\": \"SET_CONFIG\", \"VETH1_VIP\": \"10.0.1.11\", \"VETH1_VMAC\": \"00:00:0a:00:01:0b\", \"VXLAN_ID\": 1, \"SWARM_ID\": 0, \"COORDINATOR_VIP\": \"10.0.1.254\", \"COORDINATOR_TCP_PORT\": 29997, \"AP_UUID\": \"AP:00:00:01\"}', ('10.42.0.11', 29997))"}
+{"timestamp": "2025-04-15 16:05:07,077", "function": "handle_new_connected_station", "duration_ms": 12933.802, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
+{"timestamp": "2025-04-15 17:03:13,386", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 2077.598, "duration_sec": 2.077598, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 17:03:13,386", "function": "ARP Resolution", "duration_ms": 2077.926, "duration_sec": 2.077926}
+{"timestamp": "2025-04-15 17:03:13,391", "function": "ART DB Lookup", "duration_ms": 4.408, "duration_sec": 0.004408}
+{"timestamp": "2025-04-15 17:03:13,422", "function": "VXLAN Check + Assignment", "duration_ms": 29.962, "duration_sec": 0.029962}
+{"timestamp": "2025-04-15 17:03:13,434", "function": "create_vxlan_by_host_id", "duration_ms": 12.091, "duration_sec": 0.012091, "kwargs": "{'vxlan_id': 1, 'remote': '10.42.0.11'}"}
+{"timestamp": "2025-04-15 17:03:13,435", "function": "VXLAN Interface Creation", "duration_ms": 12.468, "duration_sec": 0.012468}
+{"timestamp": "2025-04-15 17:03:13,692", "function": "BMv2 Port Handling", "duration_ms": 257.365, "duration_sec": 0.257365}
+{"timestamp": "2025-04-15 17:03:13,693", "function": "Virtual IP/MAC Assignment", "duration_ms": 0.063, "duration_sec": 6.3e-05}
+{"timestamp": "2025-04-15 17:03:13,892", "function": "send_swarmNode_config", "duration_ms": 199.677, "duration_sec": 0.199677, "args": "('{\"TYPE\": \"SET_CONFIG\", \"VETH1_VIP\": \"10.0.1.11\", \"VETH1_VMAC\": \"00:00:0a:00:01:0b\", \"VXLAN_ID\": 1, \"SWARM_ID\": 0, \"COORDINATOR_VIP\": \"10.0.1.254\", \"COORDINATOR_TCP_PORT\": 29997, \"AP_UUID\": \"AP:00:00:01\"}', ('10.42.0.11', 29997))"}
+{"timestamp": "2025-04-15 17:03:13,894", "function": "Send TCP Config to Node", "duration_ms": 201.294, "duration_sec": 0.201294}
+{"timestamp": "2025-04-15 17:03:13,898", "function": "ART Insert", "duration_ms": 4.127, "duration_sec": 0.004127}
+{"timestamp": "2025-04-15 17:03:23,696", "function": "Local & Remote P4 Setup", "duration_ms": 9797.766, "duration_sec": 9.797766}
+{"timestamp": "2025-04-15 17:03:23,696", "function": "handle_new_connected_station", "duration_ms": 12388.793, "duration_sec": 12.388793, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
+{"timestamp": "2025-04-15 17:04:25,129", "function": "get_ip_from_arp_by_physical_mac", "duration_ms": 4.604, "duration_sec": 0.004604, "args": "('00:00:00:00:00:01',)"}
+{"timestamp": "2025-04-15 17:04:46,068", "function": "handle_disconnected_station", "duration_ms": 20956.399, "duration_sec": 20.956399, "kwargs": "{'station_physical_mac_address': '00:00:00:00:00:01'}"}
