@@ -26,9 +26,9 @@ import lib.database_comms as db
 import lib.global_constants as cts
 from lib.helper_functions import *
 from argparse import ArgumentParser
-from coordinator_log_server import WebSocketHandler, start_log_server_loop
+from coordinator_log_server import WebSocketHandler
 
-start_log_server_loop()
+#start_log_server_loop()
 
 STRs = cts.String_Constants
 

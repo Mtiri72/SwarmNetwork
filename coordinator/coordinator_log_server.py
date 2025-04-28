@@ -6,16 +6,20 @@ import asyncio
 import logging
 import queue
 
+# FastAPI app
 app = FastAPI()
+
+# Live WebSocket connections
 active_websockets = set()
+
+# Queue for live broadcasting
 log_queue = queue.Queue()
 
-@app.on_event("startup")
-async def startup_event():
-    print("🚀 WebSocket broadcast loop is starting...")
-    asyncio.create_task(websocket_broadcast_loop())
+# Circular buffer to store recent logs
+log_buffer = []
+MAX_LOG_BUFFER = 1000  # You can adjust this if needed
 
-
+# HTML page
 html = """
 <!DOCTYPE html>
 <html lang="en">
@@ -58,25 +62,32 @@ html = """
 </html>
 """
 
+# Serve the HTML page
 @app.get("/")
 async def get():
     return HTMLResponse(html)
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
+# WebSocket endpoint
 @app.websocket("/ws/logs")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_websockets.add(websocket)
     print("✅ Browser connected:", websocket.client)
+
+    # ➡️ Send buffered logs first
+    for old_log in log_buffer:
+        try:
+            await websocket.send_text(old_log)
+        except:
+            pass  # Ignore sending failures
+
     try:
         while True:
-            await asyncio.sleep(10)  # Just sleep to keep connection alive
+            await asyncio.sleep(10)  # Keep connection alive
     except WebSocketDisconnect:
         active_websockets.remove(websocket)
 
+# Background loop to broadcast logs
 async def websocket_broadcast_loop():
     while True:
         msg = await asyncio.get_event_loop().run_in_executor(None, log_queue.get)
@@ -89,11 +100,19 @@ async def websocket_broadcast_loop():
                 to_remove.add(ws)
         active_websockets.difference_update(to_remove)
 
-def start_log_server_loop():
-    pass
+# Start broadcast loop after FastAPI app is ready
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 WebSocket broadcast loop is starting...")
+    asyncio.create_task(websocket_broadcast_loop())
 
-# WebSocket Logging Handler
+# Custom WebSocket logging handler
 class WebSocketHandler(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
         log_queue.put(msg)
+
+        # ➡️ Save in circular buffer
+        if len(log_buffer) >= MAX_LOG_BUFFER:
+            log_buffer.pop(0)  # Remove oldest
+        log_buffer.append(msg)
