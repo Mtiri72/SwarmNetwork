@@ -1,102 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Swarm Live Logs</title>
-    <style>
-        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
-        .log-line { margin: 5px 0; white-space: pre-wrap; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swarm Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: monospace;
+      background-color: #111;
+      color: #0f0;
+    }
 
-        /* Log colors */
-        .log-debug { color: #7CFC00; }
-        .log-info { color: #00FF00; }
-        .log-warning { color: #FFFF00; }
-        .log-error { color: #FF4500; }
-    </style>
+    #dashboard-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    #sidebar {
+      width: 200px;
+      background-color: #222;
+      padding: 20px;
+      box-sizing: border-box;
+      border-right: 2px solid #0f0;
+    }
+
+    #sidebar h2 {
+      margin-top: 0;
+    }
+
+    #sidebar button {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      background: #333;
+      color: #0f0;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #sidebar button:hover {
+      background: #444;
+    }
+
+    #main-content {
+      flex-grow: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    #database-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #database-table th, #database-table td {
+      border: 1px solid #0f0;
+      padding: 8px;
+      text-align: left;
+    }
+
+    #logs {
+      white-space: pre-wrap;
+      background-color: #111;
+      padding: 10px;
+      border: 1px solid #0f0;
+      height: 80vh;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
-    <h2>Swarm Nodes Table</h2>
-    <table id="db-table" border="1" cellpadding="5" cellspacing="0" style="width:100%; color:white;">
+<div id="dashboard-container">
+  <div id="sidebar">
+    <h2>Dashboard</h2>
+    <button onclick="showSection('database')">Database View</button>
+    <button onclick="showSection('logs')">Logs View</button>
+  </div>
+
+  <div id="main-content">
+    <div id="database-section">
+      <h2>Connected Smart Nodes</h2>
+      <table id="database-table">
         <thead>
-            <tr>
-                <th>UUID</th>
-                <th>AP Port</th>
-                <th>Current AP</th>
-                <th>Current Swarm</th>
-                <th>Last Update</th>
-                <th>Virtual IP</th>
-            </tr>
+          <tr>
+            <th>UUID</th>
+            <th>AP Port</th>
+            <th>Current AP</th>
+            <th>Current Swarm</th>
+            <th>Last Update</th>
+            <th>Virt IP</th>
+          </tr>
         </thead>
         <tbody id="db-table-body">
-            <!-- Dynamic rows inserted here -->
         </tbody>
-    </table>
+      </table>
+    </div>
 
-    <h2>Live Swarm Logs</h2>
-    <div id="logs"></div>
-    <script>
-        console.log("Connecting to WebSocket...");
-        const ws = new WebSocket(`ws://${location.host}/ws/logs`);
-        const dbWs = new WebSocket(`ws://${location.host}/ws/database`);
-        
-        ws.onopen = function(event) {
-            console.log("✅ Connected to WebSocket Server");
-        };
+    <div id="logs-section" style="display:none;">
+      <h2>Live Logs</h2>
+      <div id="logs"></div>
+    </div>
+  </div>
+</div>
 
-        ws.onmessage = function(event) {
-            console.log("📩 New message received:", event.data);
+<script>
+function showSection(section) {
+  if (section === 'database') {
+    document.getElementById('database-section').style.display = 'block';
+    document.getElementById('logs-section').style.display = 'none';
+  } else if (section === 'logs') {
+    document.getElementById('database-section').style.display = 'none';
+    document.getElementById('logs-section').style.display = 'block';
+  }
+}
 
-            const line = document.createElement("div");
-            line.className = "log-line";
+// Connect to WebSocket for logs
+const logWs = new WebSocket(`ws://${location.host}/ws/logs`);
+logWs.onopen = function() {
+  console.log('✅ Connected to Log WebSocket');
+};
+logWs.onmessage = function(event) {
+  const line = document.createElement("div");
+  line.textContent = event.data;
+  document.getElementById("logs").prepend(line);
+};
 
-            // Detect log level
-            if (event.data.includes("[DEBUG]")) {
-                line.classList.add("log-debug");
-            } else if (event.data.includes("[INFO]")) {
-                line.classList.add("log-info");
-            } else if (event.data.includes("[WARNING]")) {
-                line.classList.add("log-warning");
-            } else if (event.data.includes("[ERROR]")) {
-                line.classList.add("log-error");
-            }
+// Connect to WebSocket for database
+const dbWs = new WebSocket(`ws://${location.host}/ws/database`);
+dbWs.onopen = function() {
+  console.log('✅ Connected to Database WebSocket');
+};
+dbWs.onmessage = function(event) {
+  console.log('📩 New Database snapshot received');
+  const data = JSON.parse(event.data);
 
-            line.textContent = event.data;
-            document.getElementById("logs").appendChild(line);
+  const tbody = document.getElementById('db-table-body');
+  tbody.innerHTML = ''; // clear previous entries
 
-            // Auto-scroll to bottom
-            window.scrollTo(0, document.body.scrollHeight);
-        };
-        
-        dbWs.onmessage = function(event) {
-            console.log("📩 New Database snapshot received");
-            const nodes = JSON.parse(event.data);
+  for (const node of data) {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${node.uuid}</td>
+      <td>${node.ap_port}</td>
+      <td>${node.current_ap}</td>
+      <td>${node.current_swarm}</td>
+      <td>${node.last_update}</td>
+      <td>${node.virt_ip}</td>
+    `;
+    tbody.appendChild(row);
+  }
+};
+</script>
 
-            const tableBody = document.getElementById("db-table-body");
-            tableBody.innerHTML = "";  // Clear old rows
-
-            nodes.forEach(node => {
-                const row = document.createElement("tr");
-
-                row.innerHTML = `
-                    <td>${node.uuid}</td>
-                    <td>${node.ap_port}</td>
-                    <td>${node.current_ap}</td>
-                    <td>${node.current_swarm}</td>
-                    <td>${node.last_update}</td>
-                    <td>${node.virt_ip}</td>
-                `;
-
-                tableBody.appendChild(row);
-            });
-        };
-
-        ws.onerror = function(event) {
-            console.error("❌ WebSocket error observed:", event);
-        };
-
-        ws.onclose = function(event) {
-            console.warn("⚠️ WebSocket connection closed:", event);
-        };
-    </script>
 </body>
 </html>
