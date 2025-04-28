@@ -9,6 +9,7 @@ import queue
 sys.path.append('..')
 sys.path.append('.')
 
+import uvicorn
 import psutil
 import atexit
 import lib.global_config as cfg
@@ -18,7 +19,6 @@ import re
 import os
 import logging
 import logging.handlers
-import ipaddress
 import json
 import threading
 import lib.bmv2_thrift_lib as bmv2
@@ -26,6 +26,9 @@ import lib.database_comms as db
 import lib.global_constants as cts
 from lib.helper_functions import *
 from argparse import ArgumentParser
+from coordinator_log_server import WebSocketHandler, start_log_server_loop
+
+start_log_server_loop()
 
 STRs = cts.String_Constants
 
@@ -90,10 +93,14 @@ PROGRAM_LOG_FILE_NAME = './logs/coordinator.log'
 os.makedirs(os.path.dirname(PROGRAM_LOG_FILE_NAME), exist_ok=True)
 logger = logging.getLogger(THIS_NODE_UUID)
 
-log_socket_handler = SocketStreamHandler( cfg.logs_server_address[0], cfg.logs_server_address[1] )
-log_info_formatter =  logging.Formatter("%(name)s %(asctime)s [%(levelname)s]:\n%(message)s\n")
-log_socket_handler.setFormatter(log_info_formatter)
-log_socket_handler.setLevel(logging.INFO)
+log_info_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+# Setup WebSocket logging
+log_ws_handler = WebSocketHandler()
+log_info_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+log_ws_handler.setFormatter(log_info_formatter)
+logger.addHandler(log_ws_handler)
+
 
 log_console_handler = logging.StreamHandler(sys.stdout)
 log_console_handler.setLevel(args.log_level)
@@ -177,10 +184,6 @@ class Swarm_Node_Handler:
             
     def reject_join_request(self):
         pass
-        #TODO
-        # db.delete_node_from_swarm_database(self.node_swarm_id)
-        # self.node_socket.send( bytes( f'Rejected: {self.req_id}'.encode() ) )
-        # print(f'Rejected node {self.node_uuid} with request {self.req_id}')
         
         
         
@@ -241,18 +244,6 @@ class Swarm_Node_Handler:
             action_name='MyIngress.ac_ipv4_forward_mac_from_dst_ip', match_keys=f'{station_vip}/32' , 
             action_params= str(host_id), thrift_ip= ap_ip, thrift_port= DEFAULT_THRIFT_PORT )
      
-        # entry_handle = bmv2.add_entry_to_bmv2(communication_protocol= bmv2.P4_CONTROL_METHOD_THRIFT_CLI, 
-        #                                             table_name='MyIngress.tb_l2_forward', action_name= 'ac_l2_forward', 
-        #                                             match_keys= f'{node_swarm_mac}', action_params= str(node_swarm_id),
-        #                                             thrift_ip= ap_ip, thrift_port= DEFAULT_THRIFT_PORT)
-        
-        # bmv2.delete_forwarding_entry_from_bmv2(
-        #     communication_protocol= bmv2.P4_CONTROL_METHOD_THRIFT_CLI, table_name='MyIngress.tb_swarm_control', key= f'{node_swarm_id} {cfg.coordinator_vip}',
-        #     thrift_ip= ap_ip, thrift_port= DEFAULT_THRIFT_PORT)
-
-        # bmv2.delete_forwarding_entry_from_bmv2(
-        #     communication_protocol= bmv2.P4_CONTROL_METHOD_THRIFT_CLI, table_name= 'MyIngress.tb_swarm_control', 
-        #     key= f'{cfg.swarm_backbone_switch_port} {self.node_swarm_ip}', thrift_ip= ap_ip, thrift_port=DEFAULT_THRIFT_PORT)
         
         
         # insert table entries in the rest of the APs
@@ -266,15 +257,7 @@ class Swarm_Node_Handler:
                         action_name='MyIngress.ac_ipv4_forward_mac', match_keys=f'{station_vip}/32' , 
                         action_params= f'{cfg.swarm_backbone_switch_port} {ap_mac}', thrift_ip= ap_ip, thrift_port= DEFAULT_THRIFT_PORT )
                 
-                # entry_handle = bmv2.add_entry_to_bmv2(communication_protocol= bmv2.P4_CONTROL_METHOD_THRIFT_CLI, 
-                #                         table_name='MyIngress.tb_l2_forward', action_name= 'ac_l2_forward', 
-                #                         match_keys= f'{node_swarm_mac}', action_params= str(cfg.swarm_backbone_switch_port),
-                #                         thrift_ip= cfg.ap_list[key][0], thrift_port= DEFAULT_THRIFT_PORT)
-         
-
-
-
-
+            
 
 # a function to configure the keep alive of the tcp connection
 def set_keepalive_linux(sock, after_idle_sec=1, interval_sec=3, max_fails=5):
@@ -322,6 +305,7 @@ def swarm_coordinator():
             # threading.Thread(target=handle_swarm_node, args=(node_socket, address, ), daemon= True ).start()
 
 
+
 def exit_handler():
     log_socket_handler.close()
 
@@ -329,11 +313,17 @@ def exit_handler():
 def main():
     atexit.register(exit_handler)
 
-    # set_arps()
+    # Start Uvicorn server
+    threading.Thread(target=lambda: uvicorn.run("coordinator_log_server:app", host="0.0.0.0", port=8000, reload=False, log_level="info"), daemon=True).start()
+
     logger.info('Coordinator Starting')
+
+    # Start TCP server
     swarm_coordinator()
 
-    return 0 
+    return 0
+
 
 if __name__ == "__main__":
     main()
+
