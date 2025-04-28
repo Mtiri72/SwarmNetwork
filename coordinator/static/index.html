@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swarm Live Logs</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        .log-line { margin: 5px 0; white-space: pre-wrap; }
+
+        /* Log colors */
+        .log-debug { color: #7CFC00; }
+        .log-info { color: #00FF00; }
+        .log-warning { color: #FFFF00; }
+        .log-error { color: #FF4500; }
+    </style>
+</head>
+<body>
+    <h2>Swarm Nodes Table</h2>
+    <table id="db-table" border="1" cellpadding="5" cellspacing="0" style="width:100%; color:white;">
+        <thead>
+            <tr>
+                <th>UUID</th>
+                <th>AP Port</th>
+                <th>Current AP</th>
+                <th>Current Swarm</th>
+                <th>Last Update</th>
+                <th>Virtual IP</th>
+            </tr>
+        </thead>
+        <tbody id="db-table-body">
+            <!-- Dynamic rows inserted here -->
+        </tbody>
+    </table>
+
+    <h2>Live Swarm Logs</h2>
+    <div id="logs"></div>
+    <script>
+        console.log("Connecting to WebSocket...");
+        const ws = new WebSocket(`ws://${location.host}/ws/logs`);
+        const dbWs = new WebSocket(`ws://${location.host}/ws/database`);
+        
+        ws.onopen = function(event) {
+            console.log("✅ Connected to WebSocket Server");
+        };
+
+        ws.onmessage = function(event) {
+            console.log("📩 New message received:", event.data);
+
+            const line = document.createElement("div");
+            line.className = "log-line";
+
+            // Detect log level
+            if (event.data.includes("[DEBUG]")) {
+                line.classList.add("log-debug");
+            } else if (event.data.includes("[INFO]")) {
+                line.classList.add("log-info");
+            } else if (event.data.includes("[WARNING]")) {
+                line.classList.add("log-warning");
+            } else if (event.data.includes("[ERROR]")) {
+                line.classList.add("log-error");
+            }
+
+            line.textContent = event.data;
+            document.getElementById("logs").appendChild(line);
+
+            // Auto-scroll to bottom
+            window.scrollTo(0, document.body.scrollHeight);
+        };
+        
+        dbWs.onmessage = function(event) {
+            console.log("📩 New Database snapshot received");
+            const nodes = JSON.parse(event.data);
+
+            const tableBody = document.getElementById("db-table-body");
+            tableBody.innerHTML = "";  // Clear old rows
+
+            nodes.forEach(node => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${node.uuid}</td>
+                    <td>${node.ap_port}</td>
+                    <td>${node.current_ap}</td>
+                    <td>${node.current_swarm}</td>
+                    <td>${node.last_update}</td>
+                    <td>${node.virt_ip}</td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        };
+
+        ws.onerror = function(event) {
+            console.error("❌ WebSocket error observed:", event);
+        };
+
+        ws.onclose = function(event) {
+            console.warn("⚠️ WebSocket connection closed:", event);
+        };
+    </script>
+</body>
+</html>

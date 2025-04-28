@@ -1,7 +1,16 @@
 # coordinator_log_server.py
+import sys
+import os
+import json
+
+# Allow imports from parent directory (SwarmNetwork/)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+sys.path.append(BASE_DIR)
+
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+import lib.database_comms as db
 import asyncio
 import logging
 import queue
@@ -11,6 +20,8 @@ app = FastAPI()
 
 # Live WebSocket connections
 active_websockets = set()
+active_database_websockets = set()
+
 
 # Queue for live broadcasting
 log_queue = queue.Queue()
@@ -19,53 +30,14 @@ log_queue = queue.Queue()
 log_buffer = []
 MAX_LOG_BUFFER = 1000  # You can adjust this if needed
 
-# HTML page
-html = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Swarm Live Logs</title>
-    <style>
-        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
-        .log-line { margin: 5px 0; }
-    </style>
-</head>
-<body>
-    <h2>Live Swarm Logs</h2>
-    <div id="logs"></div>
-    <script>
-        console.log("Connecting to WebSocket...");
-        const ws = new WebSocket(`ws://${location.host}/ws/logs`);
-        
-        ws.onopen = function(event) {
-            console.log("✅ Connected to WebSocket Server");
-        };
+# Define base directory for static files
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-        ws.onmessage = function(event) {
-            console.log("📩 New message received:", event.data);
-            const line = document.createElement("div");
-            line.className = "log-line";
-            line.textContent = event.data;
-            document.getElementById("logs").prepend(line);
-        };
-
-        ws.onerror = function(event) {
-            console.error("❌ WebSocket error observed:", event);
-        };
-
-        ws.onclose = function(event) {
-            console.warn("⚠️ WebSocket connection closed:", event);
-        };
-    </script>
-</body>
-</html>
-"""
-
-# Serve the HTML page
 @app.get("/")
-async def get():
-    return HTMLResponse(html)
+async def get_homepage():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
 
 # WebSocket endpoint
 @app.websocket("/ws/logs")
@@ -104,7 +76,19 @@ async def websocket_broadcast_loop():
 @app.on_event("startup")
 async def startup_event():
     print("🚀 WebSocket broadcast loop is starting...")
-    asyncio.create_task(websocket_broadcast_loop())
+
+    try:
+        asyncio.create_task(websocket_broadcast_loop())
+        print("✅ Started websocket_broadcast_loop")
+    except Exception as e:
+        print(f"❌ Error starting websocket_broadcast_loop: {e}")
+
+    try:
+        asyncio.create_task(database_broadcast_loop())
+        print("✅ Started database_broadcast_loop")
+    except Exception as e:
+        print(f"❌ Error starting database_broadcast_loop: {e}")
+
 
 # Custom WebSocket logging handler
 class WebSocketHandler(logging.Handler):
@@ -116,3 +100,48 @@ class WebSocketHandler(logging.Handler):
         if len(log_buffer) >= MAX_LOG_BUFFER:
             log_buffer.pop(0)  # Remove oldest
         log_buffer.append(msg)
+
+def fetch_all_smart_nodes_as_list():
+    """Fetch all smart nodes from the database as a list of dicts."""
+    try:
+        session = db.DATABASE_SESSION
+        query = "SELECT uuid, ap_port, current_ap, current_swarm, last_update, virt_ip FROM ks_swarm.art;"
+        rows = session.execute(query)
+        return [dict(row._asdict()) for row in rows]
+    except Exception as e:
+        print(f"❌ Error fetching database: {e}")
+        return []
+
+@app.websocket("/ws/database")
+async def websocket_database(websocket: WebSocket):
+    await websocket.accept()
+    active_database_websockets.add(websocket)
+    print("✅ Browser connected for Database streaming:", websocket.client)
+
+    try:
+        while True:
+            await asyncio.sleep(10)  # Just keep connection open
+    except WebSocketDisconnect:
+        active_database_websockets.remove(websocket)
+
+async def database_broadcast_loop():
+    print("🚀🚀 database_broadcast_loop() function entered")
+    """Continuously check for database changes and broadcast updates."""
+    last_snapshot = None  # Previous known database state
+
+    while True:
+        current_snapshot = fetch_all_smart_nodes_as_list()
+        if current_snapshot != last_snapshot:
+            print(" Database changed, broadcasting new snapshot...")
+            last_snapshot = current_snapshot
+            json_data = json.dumps(current_snapshot, default=str)
+
+            to_remove = set()
+            for ws in active_database_websockets:
+                try:
+                    await ws.send_text(json_data)
+                except:
+                    to_remove.add(ws)
+            active_database_websockets.difference_update(to_remove)
+
+        await asyncio.sleep(1)  # Check every 1 second
