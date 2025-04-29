@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Swarm Dashboard</title>
   <style>
     body {
@@ -62,7 +62,7 @@
       text-align: left;
     }
 
-    #logs {
+    .log-container {
       white-space: pre-wrap;
       background-color: #111;
       padding: 10px;
@@ -77,7 +77,8 @@
   <div id="sidebar">
     <h2>Dashboard</h2>
     <button onclick="showSection('database')">Database View</button>
-    <button onclick="showSection('logs')">Logs View</button>
+    <button onclick="showSection('coordinator-logs')">Coordinator Logs</button>
+    <button onclick="showSection('ap-logs')">Access Point Logs</button>
   </div>
 
   <div id="main-content">
@@ -99,21 +100,30 @@
       </table>
     </div>
 
-    <div id="logs-section" style="display:none;">
-      <h2>Live Logs</h2>
-      <div id="logs"></div>
+    <div id="coordinator-logs-section" style="display:none;">
+      <h2>Coordinator Logs</h2>
+      <div id="coordinator-logs" class="log-container"></div>
+    </div>
+
+    <div id="ap-logs-section" style="display:none;">
+      <h2>Access Point Logs</h2>
+      <div id="ap-logs" class="log-container"></div>
     </div>
   </div>
 </div>
 
 <script>
 function showSection(section) {
+  document.getElementById('database-section').style.display = 'none';
+  document.getElementById('coordinator-logs-section').style.display = 'none';
+  document.getElementById('ap-logs-section').style.display = 'none';
+
   if (section === 'database') {
     document.getElementById('database-section').style.display = 'block';
-    document.getElementById('logs-section').style.display = 'none';
-  } else if (section === 'logs') {
-    document.getElementById('database-section').style.display = 'none';
-    document.getElementById('logs-section').style.display = 'block';
+  } else if (section === 'coordinator-logs') {
+    document.getElementById('coordinator-logs-section').style.display = 'block';
+  } else if (section === 'ap-logs') {
+    document.getElementById('ap-logs-section').style.display = 'block';
   }
 }
 
@@ -123,9 +133,17 @@ logWs.onopen = function() {
   console.log('✅ Connected to Log WebSocket');
 };
 logWs.onmessage = function(event) {
-  const line = document.createElement("div");
-  line.textContent = event.data;
-  document.getElementById("logs").prepend(line);
+  const message = event.data;
+
+  if (message.startsWith("AP:")) {
+    const apLine = document.createElement("div");
+    apLine.textContent = message;
+    document.getElementById("ap-logs").prepend(apLine);
+  } else {
+    const coordLine = document.createElement("div");
+    coordLine.textContent = message;
+    document.getElementById("coordinator-logs").prepend(coordLine);
+  }
 };
 
 // Connect to WebSocket for database

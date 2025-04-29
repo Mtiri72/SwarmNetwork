@@ -2,6 +2,7 @@
 import sys
 import os
 import json
+import threading
 
 # Allow imports from parent directory (SwarmNetwork/)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -15,6 +16,40 @@ import asyncio
 import logging
 import queue
 
+import socket
+import threading
+
+
+# TCP log server
+def start_tcp_log_server(host='0.0.0.0', port=5000):
+    def handle_tcp_client(client_socket):
+        with client_socket:
+            try:
+                while True:
+                    data = client_socket.recv(1024)
+                    if not data:
+                        break
+                    message = data.decode('utf-8').strip()
+                    print(f"🛜 [AP Log Received]: {message}")
+                    log_queue.put(message)
+            except Exception as e:
+                print(f"❌ TCP client error: {e}")
+
+    def server_loop():
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((host, port))
+        server_socket.listen(5)
+        print(f"🚀 TCP Log Server listening on {host}:{port}...")
+        while True:
+            client_socket, addr = server_socket.accept()
+            print(f"✅ New AP Connected for logs from {addr}")
+            threading.Thread(target=handle_tcp_client, args=(client_socket,), daemon=True).start()
+
+    threading.Thread(target=server_loop, daemon=True).start()
+
+#  Immediately start TCP server
+start_tcp_log_server()
 # FastAPI app
 app = FastAPI()
 
@@ -145,3 +180,25 @@ async def database_broadcast_loop():
             active_database_websockets.difference_update(to_remove)
 
         await asyncio.sleep(1)  # Check every 1 second
+
+
+    def handle_client(client_socket, address):
+        print(f"✅ TCP Client connected from {address}")
+
+        try:
+            while True:
+                data = client_socket.recv(4096)
+                if not data:
+                    break
+                log_message = data.decode('utf-8').strip()
+                print(f"📝 [TCP Log] {log_message}")
+
+                # ➡️ Push log to WebSocket broadcast system
+                log_queue.put(log_message)  # ADD THIS LINE!
+
+        except Exception as e:
+            print(f"❌ TCP Client Error: {repr(e)}")
+        finally:
+            client_socket.close()
+            print(f"❌ TCP Client disconnected: {address}")
+
