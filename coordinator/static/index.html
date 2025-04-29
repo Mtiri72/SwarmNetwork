@@ -67,8 +67,26 @@
       background-color: #111;
       padding: 10px;
       border: 1px solid #0f0;
-      height: 80vh;
+      height: 70vh;
       overflow-y: auto;
+      margin-bottom: 10px;
+    }
+
+    .button-row {
+      margin-bottom: 10px;
+    }
+
+    .button-row button {
+      margin-right: 10px;
+      padding: 8px 12px;
+      background: #333;
+      color: #0f0;
+      border: 1px solid #0f0;
+      cursor: pointer;
+    }
+
+    .button-row button:hover {
+      background: #444;
     }
   </style>
 </head>
@@ -102,11 +120,19 @@
 
     <div id="coordinator-logs-section" style="display:none;">
       <h2>Coordinator Logs</h2>
+      <div class="button-row">
+        <button onclick="clearLogs('coordinator-logs')">Clear</button>
+        <button onclick="downloadLogs('coordinator-logs')">Download</button>
+      </div>
       <div id="coordinator-logs" class="log-container"></div>
     </div>
 
     <div id="ap-logs-section" style="display:none;">
       <h2>Access Point Logs</h2>
+      <div class="button-row">
+        <button onclick="clearLogs('ap-logs')">Clear</button>
+        <button onclick="downloadLogs('ap-logs')">Download</button>
+      </div>
       <div id="ap-logs" class="log-container"></div>
     </div>
   </div>
@@ -125,6 +151,21 @@ function showSection(section) {
   } else if (section === 'ap-logs') {
     document.getElementById('ap-logs-section').style.display = 'block';
   }
+}
+
+// Function to clear logs
+function clearLogs(logId) {
+  document.getElementById(logId).innerHTML = '';
+}
+
+// Function to download logs
+function downloadLogs(logId) {
+  const logs = document.getElementById(logId).innerText;
+  const blob = new Blob([logs], { type: 'text/plain' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = logId + '.txt';
+  link.click();
 }
 
 // Connect to WebSocket for logs
