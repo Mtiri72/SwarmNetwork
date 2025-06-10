@@ -8,7 +8,6 @@ sys.path.append('../..')
 import subprocess
 import logging
 import logging.handlers
-
 import threading
 import socket
 import atexit
@@ -24,57 +23,103 @@ import asyncio
 import lib.global_constants as cts
 import lib.helper_functions as utils
 import json
+import logging
 import concurrent.futures
-
-
 import lib.node_discovery as se_net
-
 from argparse import ArgumentParser
+from json_formatter import JSONLogFormatter
+
 
 
 STRs = cts.String_Constants
 
-class SocketStreamHandler(logging.StreamHandler):
-    """Custom StreamHandler to send logs over TCP."""
-    def __init__(self, host, port):
-        super().__init__(sys.stdout)  # StreamHandler needs an output stream
+
+# Generate AP UUID based on loopback interface
+loopback_if = 'lo:0'
+NODE_TYPE = 'AP'
+THIS_AP_UUID = utils.generate_uuid_from_lo(loopback_if=loopback_if, node_type=NODE_TYPE)
+
+# === Parse command line arguments ===
+parser = ArgumentParser()
+parser.add_argument("-l", "--log-level", type=int, default=50, help="set logging level [10, 20, 30, 40, 50]")
+parser.add_argument("-n", "--num-id", type=int, default=50, help="sequential uniq numeric id for node identification")
+args = parser.parse_args()
+
+# === Create log folder if it doesn't exist ===
+PROGRAM_LOG_FILE_NAME = './logs/ap.log'
+os.makedirs(os.path.dirname(PROGRAM_LOG_FILE_NAME), exist_ok=True)
+
+# === Create the main logger ===
+logger = logging.getLogger(f'{THIS_AP_UUID}')
+logger.setLevel(logging.DEBUG)  # Log everything, filter per handler
+
+# === 1. Console Handler ===
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG)  # Show all levels in terminal
+console_formatter = logging.Formatter(
+    "Line:%(lineno)d at %(asctime)s [%(levelname)s] Thread: %(threadName)s File: %(filename)s :\n%(message)s\n"
+)
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)
+import json 
+# === 2. JSON-formatted Socket Handler to Coordinator ===
+class APLogSocketHandler(logging.Handler):
+    def __init__(self, uuid, log_type, host, port):
+        super().__init__()
+        self.uuid = uuid
+        self.log_type = log_type
         self.host = host
         self.port = port
         self.sock = None
         self._connect()
 
     def _connect(self):
-        """Establish connection to log server."""
         try:
             self.sock = socket.create_connection((self.host, self.port))
+            print(f"[APLogSocketHandler] Successfully connected to log server at {self.host}:{self.port}")
         except Exception as e:
-            print(f"Failed to connect to log server: {e}")
+            print(f"[APLogSocketHandler] Failed to connect to log server: {e}")
             self.sock = None
 
     def emit(self, record):
-        """Send log message to log server."""
         if not self.sock:
-            self._connect()  # Try to reconnect if needed
-            if not self.sock:
-                return  # Drop log if connection fails
+            print(f"[APLogSocketHandler] Skipping log, socket is None")
+            return  # Don't reconnect aggressively
 
         try:
-            msg = self.format(record) + "\n"
-            self.sock.sendall(msg.encode('utf-8'))  # Send log as bytes
+            log_entry = {
+                "uuid": self.uuid,
+                "type": self.log_type,
+                "level": record.levelname,
+                "timestamp": self.formatter.formatTime(record),
+                "message": self.format(record)
+            }
+            msg = json.dumps(log_entry) + '\n'
+            self.sock.sendall(msg.encode('utf-8'))
+            print(f"[APLogSocketHandler] Sent log to server: {log_entry['message']}")
         except Exception as e:
-            print(f"Error sending log: {e}")
-            self.sock = None  # Reset socket on failure
+            print(f"[APLogSocketHandler] Error sending log: {e}")
+            self.sock = None  # Set socket to None to avoid repeated errors
 
     def close(self):
-        """Close the socket when done."""
         if self.sock:
             self.sock.close()
         super().close()
 
-## We use the lo:0 interface to generate the ID of the node
-loopback_if = 'lo:0'
-NODE_TYPE='AP'
-THIS_AP_UUID = utils.generate_uuid_from_lo(loopback_if=loopback_if, node_type=NODE_TYPE)
+# Create and attach the AP log handler
+ap_log_socket_handler = APLogSocketHandler(
+    uuid=THIS_AP_UUID,
+    log_type="AP",
+    host=cfg.logs_server_address[0],
+    port=cfg.logs_server_address[1]
+)
+ap_log_socket_handler.setLevel(logging.INFO)  # Only send INFO+ to GUI
+ap_log_socket_handler.setFormatter(JSONLogFormatter())
+logger.addHandler(ap_log_socket_handler)
+
+# === Inject logger into subsystems ===
+db.db_logger = logger
+bmv2.bmv2_logger = logger
 
 
 parser = ArgumentParser()
@@ -83,31 +128,6 @@ parser.add_argument("-n", "--num-id",type=int, default=50, help="sequential uniq
 args = parser.parse_args()
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-
-# this part handles logging to console and to a file for debugging purposes
-# where to store program logs
-PROGRAM_LOG_FILE_NAME = './logs/ap.log'
-
-os.makedirs(os.path.dirname(PROGRAM_LOG_FILE_NAME), exist_ok=True)
-logger = logging.getLogger(f'{THIS_AP_UUID}')
-
-log_socket_handler = SocketStreamHandler( cfg.logs_server_address[0], cfg.logs_server_address[1] )
-log_info_formatter =  logging.Formatter("%(name)s %(asctime)s [%(levelname)s]:\n%(message)s\n")
-log_socket_handler.setFormatter(log_info_formatter)
-log_socket_handler.setLevel(logging.INFO)
-
-client_monitor_log_console_handler = logging.StreamHandler(sys.stdout)
-log_debug_formatter = logging.Formatter("Line:%(lineno)d at %(asctime)s [%(levelname)s] Thread: %(threadName)s File: %(filename)s :\n%(message)s\n")
-client_monitor_log_console_handler.setFormatter(log_debug_formatter)
-client_monitor_log_console_handler.setLevel(args.log_level)
-
-logger.setLevel(logging.DEBUG)
-logger.addHandler(log_socket_handler)
-logger.addHandler(client_monitor_log_console_handler)
-
-db.db_logger = logger
-bmv2.bmv2_logger = logger
-
 
 
 # a global variable to set the communication protocol with the switch
@@ -223,6 +243,8 @@ def initialize_program():
 # a handler to clean exit the programs
 def exit_handler():
     logger.debug('Handling exit')
+    if global_log_socket_handler:
+        global_log_socket_handler.close()
     log_socket_handler.close()
     for snic in psutil.net_if_addrs():
         if 'se_vxlan' in snic:
